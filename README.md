@@ -106,3 +106,7 @@ You can now type messages in the terminal and press Enter to stream encrypted da
 * **Authentication Hashing**: SHA-512 (crypto/sha512)
 * **Symmetric Cipher**: AES-256-GCM (crypto/aes, crypto/cipher)
 * **Payload Encoding**: Standard Base64 (encoding/base64)
+
+## Demo
+<img width="1920" height="966" alt="demo" src="https://github.com/user-attachments/assets/85fdaec7-85cc-4f58-8527-1a9ed2133ef1" />
+
