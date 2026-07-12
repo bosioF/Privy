@@ -1,4 +1,4 @@
-# Privy Chat
+# Privy
 
 A minimalist, peer-to-peer (P2P) encrypted chat application written in Go. It establishes a secure channel between two nodes using Elliptic-Curve Diffie-Hellman (ECDH) for key exchange and AES-GCM for symmetric message encryption, allowing custom port configuration with built-in validation checks.
 
