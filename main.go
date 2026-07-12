@@ -155,6 +155,7 @@ func SendToConn(conn net.Conn, key []byte) error {
 
 		byteInput := []byte(strings.TrimSpace(input))
 		if len(byteInput) == 0 {
+			fmt.Print("\033[1A\033[K") //if user pressed enter we clear the line and reprint the prompt to not accumulate "Send" vertically
 			continue
 		}
 
@@ -165,6 +166,9 @@ func SendToConn(conn net.Conn, key []byte) error {
 
 		b64EncMsg := base64.StdEncoding.EncodeToString(EncMsg)
 		fmt.Fprintln(conn, b64EncMsg)
+
+		fmt.Print("\033[1A\r\033[K") //up one line, go to start of line, remove "Send: "
+		fmt.Printf("Sent! -> %s\n", strings.TrimSpace(input)) //reprint "Sent!" w msg
 	}
 }
 
@@ -183,7 +187,7 @@ func PrintRecvdLine(conn net.Conn, key []byte, scanner *bufio.Scanner){
 		}
 		
 		fmt.Print("\r\033[K") //puts the cursors at the start of the line, and then deletes all the lines text
-		fmt.Println("Received: ", string(DecMsg))
+		fmt.Printf("Received -> %s\n", string(DecMsg))
 		fmt.Print("Send: ")
 	}
 }
