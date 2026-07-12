@@ -90,7 +90,8 @@ func Connect() (net.Conn, error){
 
 	fmt.Print("What is the IP? (Press Enter for localhost): ")
 	reader := bufio.NewReader(os.Stdin)
-	reader.readString('\n')
+	reader.ReadString('\n')
+	
 	ipInput, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, err
