@@ -145,15 +145,19 @@ func GetConn() (net.Conn, error){
 }
 
 func SendToConn(conn net.Conn, key []byte) error {
+	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("Send: ")
-		reader := bufio.NewReader(os.Stdin)
 		input, err := reader.ReadString('\n')
 		if err != nil {
 			return err
 		}
 
 		byteInput := []byte(strings.TrimSpace(input))
+		if len(byteInput) == 0 {
+			continue
+		}
+
 		EncMsg, err := crypto.EncryptMsg(byteInput, key)
 		if err != nil {
 			return err
@@ -168,17 +172,19 @@ func PrintRecvdLine(conn net.Conn, key []byte, scanner *bufio.Scanner){
 	for scanner.Scan(){
 		b64DecMsg, err := base64.StdEncoding.DecodeString(scanner.Text())
 		if err != nil {
-			fmt.Println("error while dec b64")
+			fmt.Println("\rerror while dec b64")
 			continue
 		}
 
 		DecMsg, err := crypto.DecryptMsg(b64DecMsg, key)
 		if err != nil {
-			fmt.Println("error while dec")
+			fmt.Println("\rerror while dec")
 			continue
 		}
-
-		fmt.Println("\nReceived: ", string(DecMsg))
+		
+		fmt.Print("\r\033[K") //puts the cursors at the start of the line, and then deletes all the lines text
+		fmt.Println("Received: ", string(DecMsg))
+		fmt.Print("Send: ")
 	}
 }
 
