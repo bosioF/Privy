@@ -5,11 +5,14 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
+	"crypto/sha512"
 	"net"
 	"errors"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"bufio"
+	"strings"
 )
 
 func GenSessionKey() ([]byte, error){
@@ -115,5 +118,25 @@ func Handshake(conn net.Conn, scanner *bufio.Scanner) ([]byte, error){
 	}
 
 	fmt.Println("Handshake successful! Connection Secure!")
+	fmt.Println("If you suspect someone is atttemping a MitM attack, verify that this code is the same as the other person, over another secure channel.")
+	
+	sharedKeyHash := sha512.New()
+	sharedKeyHash.Write(sharedKey)
+	SAScode := sharedKeyHash.Sum(nil)
+	hexSAScode := hex.EncodeToString(SAScode)
+
+	var chunks []string
+	for i := 0; i < len(hexSAScode)/4; i += 4 {
+		end := i + 4
+		if end > len(hexSAScode)/4 {
+			end = len(hexSAScode)/4
+		}
+		chunks = append(chunks, hexSAScode[i:end])
+	}
+
+
+	finalSAScode := strings.Join(chunks, "-")
+	fmt.Println("SAS Code: ", finalSAScode, "\n")
+
 	return sharedKey, nil
 }

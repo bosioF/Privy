@@ -34,7 +34,7 @@ func ConnAccept(listener net.Listener) (net.Conn, error){
 		return conn, nil
 }
 
-func checkPort(port int, flag int)(int){
+func CheckPort(port int, flag int)(int){
 	if port < 1024 || port > 65535 {
 		if flag == 1 {
 			return 0
@@ -51,7 +51,7 @@ func Listen() (net.Conn, error){
 	var port int = 0
 	var flag int = 1
 	
-	for checkPort(port, flag) == 0 {
+	for CheckPort(port, flag) == 0 {
 		flag = 0
 		fmt.Print("On what port do you want to listen? (1024-65535) ")
 		_, err := fmt.Scanf("%d", &port)
@@ -81,7 +81,7 @@ func Connect() (net.Conn, error){
 	var port int = 0
 	var flag int = 1
 
-	for checkPort(port, flag) == 0 {
+	for CheckPort(port, flag) == 0 {
 		flag = 0
 		fmt.Print("On what port do you want to connect? (1024-65535) ")
 		portInput, err := reader.ReadString('\n')
