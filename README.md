@@ -35,7 +35,7 @@ The application implements a validation loop rejecting any ports out of the safe
 Clone the repository and navigate into the project directory:
 
 ```bash
-git clone [https://github.com/bosioF/privy.git](https://github.com/bosioF/privy.git)
+git clone https://github.com/bosioF/Privy.git
 cd privy
 
 ```
