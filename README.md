@@ -94,7 +94,7 @@ Once the handshake is computed, the verification prompt will display on both ter
 Connection successful! 127.0.0.1:5000
 Handshake successful! Connection Secure!
 If you suspect someone is attempting a MitM attack, verify that this code is the same as the other person, over another secure channel.
-SAS Code:  a1b2-c3d4-e5f6-7g8h 
+SAS Code:  a1b2-c3d4-e5f6-7g8h-a1b2-c3d4-e5f6-7g8h 
 
 ```
 
