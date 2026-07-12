@@ -31,7 +31,7 @@ The application implements a validation loop rejecting any ports out of the safe
 
 ## Prerequisites
 
-- Go 1.20 or higher
+- [Go 1.20 or higher](https://go.dev/doc/install)
 
 ## Getting Started
 
