@@ -76,22 +76,22 @@ func Listen() (net.Conn, error){
 }
 
 func Connect() (net.Conn, error){
+	reader := bufio.NewReader(os.Stdin)
+	
 	var port int = 0
 	var flag int = 1
 
 	for checkPort(port, flag) == 0 {
 		flag = 0
 		fmt.Print("On what port do you want to connect? (1024-65535) ")
-		_, err := fmt.Scanf("%d", &port)
+		portInput, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, err
 		}
+		port, _ = strconv.Atoi(strings.TrimSpace(portInput))
 	}
 
 	fmt.Print("What is the IP? (Press Enter for localhost): ")
-	reader := bufio.NewReader(os.Stdin)
-	reader.ReadString('\n')
-	
 	ipInput, err := reader.ReadString('\n')
 	if err != nil {
 		return nil, err

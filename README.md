@@ -78,7 +78,8 @@ Prompt flow:
 You want to host(h) or connect(c)?
 c
 On what port do you want to connect? (1024-65535) 5000
-Connection successful! 127.0.0.1:5000
+What is the IP? (Press Enter for localhost): \n
+Connecting to 127.0.0.1:5000...
 
 ```
 
