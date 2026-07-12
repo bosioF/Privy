@@ -41,7 +41,7 @@ Clone the repository and navigate into the project directory:
 
 ```bash
 git clone https://github.com/bosioF/Privy.git
-cd privy
+cd Privy
 
 ```
 
