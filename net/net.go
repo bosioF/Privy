@@ -1,8 +1,6 @@
 package net
 
 import (
-	"privy/crypto"
-	"encoding/base64"
 	"strings"
 	"fmt"
 	"bufio"
@@ -11,6 +9,10 @@ import (
 	"os"
 	"net"
 
+	"encoding/base64"
+
+	"privy/crypto"
+	"privy/types"
 )
 
 func ConnInit(Uport int) (net.Listener, error){
@@ -115,37 +117,37 @@ func Connect() (net.Conn, error){
 	return conn, nil
 }
 
-func GetConn() (net.Conn, error){
+func GetConn() (net.Conn, bool, error){
 	fmt.Println("You want to host(h) or connect(c)?")
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return nil, err 
+		return nil, false, err 
 	}
 
 	switch strings.TrimSpace(input){
 		case "h":
 			conn, err := Listen()
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 
-			return conn, nil
+			return conn, true, nil
 		case "c":
 			conn, err := Connect()
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
 
-			return conn, nil
+			return conn, false, nil
 		default:
-			return nil, errors.New("input err")
+			return nil, false, errors.New("input err")
 	}
 	
-	return nil, nil
+	return nil, false, nil
 }
 
-func SendToConn(conn net.Conn, key []byte) error {
+func SendToConn(session *types.PrivySession) error {
 	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Print("Send: ")
@@ -160,28 +162,102 @@ func SendToConn(conn net.Conn, key []byte) error {
 			continue
 		}
 
-		EncMsg, err := crypto.EncryptMsg(byteInput, key)
+		nextChainKey, msgKey, err := crypto.StepRatchet(session.SendingRatchet.ChainKey)
 		if err != nil {
 			return err
 		}
+		session.SendingRatchet.ChainKey = nextChainKey
 
+		EncMsg, err := crypto.EncryptMsg(byteInput, msgKey)
+		if err != nil {
+			return err
+		}
+		
 		b64EncMsg := base64.StdEncoding.EncodeToString(EncMsg)
-		fmt.Fprintln(conn, b64EncMsg)
+		finalMsg := fmt.Sprintf("%08x:%s", session.SendingRatchet.SequenceNum, b64EncMsg)
+		fmt.Fprintln(session.Conn, finalMsg)
+
+		session.SendingRatchet.SequenceNum++
 
 		fmt.Print("\033[1A\r\033[K") //up one line, go to start of line, remove "Send: "
 		fmt.Printf("Sent! -> %s\n", strings.TrimSpace(input)) //reprint "Sent!" w msg
 	}
 }
 
-func PrintRecvdLine(conn net.Conn, key []byte, scanner *bufio.Scanner){
+func CheckRecvdSeqNum(session *types.PrivySession, seqNum int) ([]byte, error){
+	if seqNum == session.ReceivingRatchet.ExpectedSeqNum {
+		nextChainKey, msgKey, err := crypto.StepRatchet(session.ReceivingRatchet.ChainKey)
+		if err != nil {
+			return nil, err
+		}
+
+		session.ReceivingRatchet.ChainKey = nextChainKey
+		session.ReceivingRatchet.ExpectedSeqNum++
+
+		return msgKey, err
+	}
+
+	if seqNum > session.ReceivingRatchet.ExpectedSeqNum {
+		if seqNum - session.ReceivingRatchet.ExpectedSeqNum > 100 {
+			return nil, errors.New("Sequence number too large, wtf")
+		} else {
+			var msgKey []byte
+			for session.ReceivingRatchet.ExpectedSeqNum < seqNum {
+				nextChainKey, msgKey, err := crypto.StepRatchet(session.ReceivingRatchet.ChainKey)
+				if err != nil {
+					return nil, err
+				}
+
+				session.ReceivingRatchet.ChainKey = nextChainKey
+				session.ReceivingRatchet.SkippedKeys[session.ReceivingRatchet.ExpectedSeqNum] = msgKey
+				session.ReceivingRatchet.ExpectedSeqNum++
+			}
+			
+			nextChainKey, msgKey, err := crypto.StepRatchet(session.ReceivingRatchet.ChainKey)
+			if err != nil {
+				return nil, err
+			}
+
+			session.ReceivingRatchet.ChainKey = nextChainKey
+			session.ReceivingRatchet.ExpectedSeqNum++
+
+			return msgKey, nil
+		}
+	}
+
+	if seqNum < session.ReceivingRatchet.ExpectedSeqNum {
+		msgKey, ok := session.ReceivingRatchet.SkippedKeys[seqNum]
+		if ok {
+			delete(session.ReceivingRatchet.SkippedKeys, seqNum)
+			return msgKey, nil
+		} else {
+			return nil, errors.New("not found in skipped keys")
+		}
+	}
+
+	return nil, errors.New("how did we get here")
+}
+
+func PrintRecvdLine(session *types.PrivySession, scanner *bufio.Scanner) {
 	for scanner.Scan(){
-		b64DecMsg, err := base64.StdEncoding.DecodeString(scanner.Text())
+		recvdPayload := strings.Split(scanner.Text(), ":")
+		recvdSeqNum, err := strconv.ParseInt(recvdPayload[0], 16, 0)
+		if err != nil {
+			continue
+		}
+
+		msgKey, err := CheckRecvdSeqNum(session, int(recvdSeqNum))
+		if err != nil {
+			continue
+		}
+
+		b64DecMsg, err := base64.StdEncoding.DecodeString(recvdPayload[1])
 		if err != nil {
 			fmt.Println("\rerror while dec b64")
 			continue
 		}
 
-		DecMsg, err := crypto.DecryptMsg(b64DecMsg, key)
+		DecMsg, err := crypto.DecryptMsg(b64DecMsg, msgKey)
 		if err != nil {
 			fmt.Println("\rerror while dec")
 			continue
@@ -193,6 +269,6 @@ func PrintRecvdLine(conn net.Conn, key []byte, scanner *bufio.Scanner){
 	}
 }
 
-func HandleConn(conn net.Conn, key []byte, scanner *bufio.Scanner){
-	PrintRecvdLine(conn, key, scanner)
+func HandleConn(session *types.PrivySession, scanner *bufio.Scanner){
+	PrintRecvdLine(session, scanner)
 }

@@ -6,10 +6,11 @@ import (
 
 	"privy/crypto"
 	"privy/net"
+	"privy/types"
 )
 
 func main(){	
-	conn, err := net.GetConn()
+	conn, isHost, err := net.GetConn()
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -22,8 +23,19 @@ func main(){
 		return
 	}
 
-	go net.HandleConn(conn, key, scanner)
+	sendRatchet, recvRatchet, err := crypto.InitRatchet(key, isHost)
+	if err != nil {
+		return
+	}
+
+	session := &types.PrivySession{
+		conn,
+		sendRatchet,
+		recvRatchet,
+	}
+
+	go net.HandleConn(session, scanner)
 	
-	net.SendToConn(conn, key)
+	net.SendToConn(session)
 }
 

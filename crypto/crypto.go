@@ -6,16 +6,80 @@ import (
 	"fmt"
 	"bufio"
 	"strings"
+	"io"
 
 	"crypto/rand"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/sha512"
+	"golang.org/x/crypto/hkdf"
 
 	"encoding/base64"
 	"encoding/hex"
+
+	"privy/types"
 )
+
+func InitRatchet(sharedKey []byte, isHost bool) (*types.SendingRatchet, *types.ReceivingRatchet, error){
+	h2cReader := hkdf.New(sha512.New, sharedKey, nil, []byte("privy-host-to-client"))
+	hostToClientStart := make([]byte, 32)
+
+	_, err := io.ReadFull(h2cReader, hostToClientStart)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c2hReader := hkdf.New(sha512.New, sharedKey, nil, []byte("privy-client-to-host"))
+	clientToHostStart := make([]byte, 32)
+
+	_, err = io.ReadFull(c2hReader, clientToHostStart)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var mySendKey, myRecvdKey []byte
+
+	if isHost {
+		mySendKey = hostToClientStart
+		myRecvdKey = clientToHostStart
+	} else {
+		mySendKey = clientToHostStart
+		myRecvdKey = hostToClientStart
+	}
+
+	sendRatchet := &types.SendingRatchet{
+		ChainKey: mySendKey,
+		SequenceNum: 0,
+	}
+
+	recvRatchet := &types.ReceivingRatchet{
+		ChainKey: myRecvdKey,
+		ExpectedSeqNum: 0,
+		SkippedKeys: make(map[int][]byte),
+	}
+
+	return sendRatchet, recvRatchet, nil
+}
+
+func StepRatchet(ChainKey []byte) ([]byte, []byte, error){
+	kdfReader := hkdf.New(sha512.New, ChainKey, nil, []byte("privy-msg-step"))
+
+	nextChainKey := make([]byte, 32)
+	msgKey := make([]byte, 32)
+
+	_, err := io.ReadFull(kdfReader, nextChainKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	_, err = io.ReadFull(kdfReader, msgKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return nextChainKey, msgKey, nil
+}
 
 func GenSessionKey() ([]byte, error){
 	key := make([]byte, 32)
