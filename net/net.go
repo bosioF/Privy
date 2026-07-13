@@ -1,0 +1,198 @@
+package net
+
+import (
+	"privy/crypto"
+	"encoding/base64"
+	"strings"
+	"fmt"
+	"bufio"
+	"errors"
+	"strconv"
+	"os"
+	"net"
+
+)
+
+func ConnInit(Uport int) (net.Listener, error){
+	port := ":" + strconv.Itoa(Uport)
+	
+	listener, err := net.Listen("tcp", port)
+	if err != nil {
+	 return nil, errors.New("err while trying to listen, port occupied?")
+	}
+
+	return listener, nil
+}
+
+func ConnAccept(listener net.Listener) (net.Conn, error){
+		conn, err := listener.Accept()
+		if err != nil {
+			return nil, errors.New("err while accepting connection")
+		}
+		
+		fmt.Println("Connection successful!", conn.RemoteAddr().String())
+
+		return conn, nil
+}
+
+func CheckPort(port int, flag int)(int){
+	if port < 1024 || port > 65535 {
+		if flag == 1 {
+			return 0
+		}
+
+		fmt.Println("Port not valid")
+		return 0
+	}
+
+	return 1
+}
+
+func Listen() (net.Conn, error){
+	var port int = 0
+	var flag int = 1
+	
+	for CheckPort(port, flag) == 0 {
+		flag = 0
+		fmt.Print("On what port do you want to listen? (1024-65535) ")
+		_, err := fmt.Scanf("%d", &port)
+		if err != nil {
+			return nil, err
+		}
+	}
+	
+	listener, err := ConnInit(port)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("Listening")
+	
+	conn, err := ConnAccept(listener)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func Connect() (net.Conn, error){
+	reader := bufio.NewReader(os.Stdin)
+	
+	var port int = 0
+	var flag int = 1
+
+	for CheckPort(port, flag) == 0 {
+		flag = 0
+		fmt.Print("On what port do you want to connect? (1024-65535) ")
+		portInput, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
+		port, _ = strconv.Atoi(strings.TrimSpace(portInput))
+	}
+
+	fmt.Print("What is the IP? (Press Enter for localhost): ")
+	ipInput, err := reader.ReadString('\n')
+	if err != nil {
+		return nil, err
+	}
+
+	ip := strings.TrimSpace(ipInput)
+
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
+
+	targetAddr := ip + ":" + strconv.Itoa(port)
+
+	fmt.Println("Connecting to", targetAddr, "...")
+	conn, err := net.Dial("tcp", targetAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func GetConn() (net.Conn, error){
+	fmt.Println("You want to host(h) or connect(c)?")
+	reader := bufio.NewReader(os.Stdin)
+	input, err := reader.ReadString('\n')
+	if err != nil {
+		return nil, err 
+	}
+
+	switch strings.TrimSpace(input){
+		case "h":
+			conn, err := Listen()
+			if err != nil {
+				return nil, err
+			}
+
+			return conn, nil
+		case "c":
+			conn, err := Connect()
+			if err != nil {
+				return nil, err
+			}
+
+			return conn, nil
+		default:
+			return nil, errors.New("input err")
+	}
+	
+	return nil, nil
+}
+
+func SendToConn(conn net.Conn, key []byte) error {
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("Send: ")
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+
+		byteInput := []byte(strings.TrimSpace(input))
+		if len(byteInput) == 0 {
+			fmt.Print("\033[1A\033[K") //if user pressed enter we clear the line and reprint the prompt to not accumulate "Send" vertically
+			continue
+		}
+
+		EncMsg, err := crypto.EncryptMsg(byteInput, key)
+		if err != nil {
+			return err
+		}
+
+		b64EncMsg := base64.StdEncoding.EncodeToString(EncMsg)
+		fmt.Fprintln(conn, b64EncMsg)
+
+		fmt.Print("\033[1A\r\033[K") //up one line, go to start of line, remove "Send: "
+		fmt.Printf("Sent! -> %s\n", strings.TrimSpace(input)) //reprint "Sent!" w msg
+	}
+}
+
+func PrintRecvdLine(conn net.Conn, key []byte, scanner *bufio.Scanner){
+	for scanner.Scan(){
+		b64DecMsg, err := base64.StdEncoding.DecodeString(scanner.Text())
+		if err != nil {
+			fmt.Println("\rerror while dec b64")
+			continue
+		}
+
+		DecMsg, err := crypto.DecryptMsg(b64DecMsg, key)
+		if err != nil {
+			fmt.Println("\rerror while dec")
+			continue
+		}
+		
+		fmt.Print("\r\033[K") //puts the cursors at the start of the line, and then deletes all the lines text
+		fmt.Printf("Received -> %s\n", string(DecMsg))
+		fmt.Print("Send: ")
+	}
+}
+
+func HandleConn(conn net.Conn, key []byte, scanner *bufio.Scanner){
+	PrintRecvdLine(conn, key, scanner)
+}

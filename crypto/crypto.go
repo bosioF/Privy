@@ -1,18 +1,20 @@
 package crypto
 
 import (
+	"net"
+	"errors"
+	"fmt"
+	"bufio"
+	"strings"
+
 	"crypto/rand"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/ecdh"
 	"crypto/sha512"
-	"net"
-	"errors"
+
 	"encoding/base64"
 	"encoding/hex"
-	"fmt"
-	"bufio"
-	"strings"
 )
 
 func GenSessionKey() ([]byte, error){
