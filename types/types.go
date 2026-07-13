@@ -4,10 +4,6 @@ import (
 	"net"
 )
 
-type MsgHeader struct {
-	SequenceNum int
-}
-
 type SendingRatchet struct {
 	ChainKey []byte
 	SequenceNum int
