@@ -1,37 +1,49 @@
 # Privy
 
-A minimalist, peer-to-peer (P2P) encrypted chat application written in Go. It establishes a secure channel between two nodes using Elliptic-Curve Diffie-Hellman (ECDH) for key exchange and AES-GCM for symmetric message encryption, allowing custom IP/port configuration and dynamic Short Authentication String (SAS) generation.
+A minimalist, peer-to-peer (P2P) encrypted chat application written in Go. It establishes a secure channel between two nodes using Elliptic-Curve Diffie-Hellman (ECDH) for key exchange and executes a stateful cryptographic key ratchet for message transmission, allowing custom IP/port configuration and dynamic Short Authentication String (SAS) generation.
 
 ## Features
 
-- **P2P Architecture**: Direct communication between Host and Client over TCP across local networks or localhost.
-- **Dynamic Connection Inputs**: Flexible configuration prompting the client for target Host IP addresses and custom ports.
-- **Input Validation**: Automatic bounds checking ensuring port values fall strictly within the safe unprivileged range (1024-65535).
-- **Dynamic Key Exchange**: X25519 Elliptic-Curve Diffie-Hellman (ECDH) handshake creates a unique session key per connection.
-- **Out-of-Band Verification (SAS)**: MitM mitigation via a formatted Short Authentication String derived from a SHA-512 hash of the shared secret.
-- **End-to-End Encryption**: Authenticated encryption using AES-GCM with unique nonces for every transmitted message.
-- **Text-Safe Streaming**: Network payloads are encoded in Base64 to ensure transport stability.
-- **Concurrent I/O**: Asynchronous message reading and writing managed through Go goroutines.
+* **P2P Architecture**: Direct communication between Host and Client over TCP across local networks or localhost.
+* **Dynamic Connection Inputs**: Flexible configuration prompting the client for target Host IP addresses and custom ports.
+* **Input Validation**: Automatic bounds checking ensuring port values fall strictly within the safe unprivileged range (1024-65535).
+* **Dynamic Key Exchange**: X25519 Elliptic-Curve Diffie-Hellman (ECDH) handshake creates a unique master secret per session.
+* **Perfect Forward Secrecy (PFS)**: A stateful, unidirectional symmetric key ratchet powered by HKDF-SHA512 ensures that compromising a current message key exposes zero clues about past or future keys.
+* **Asymmetric Conveyor Belts**: Separate independent ratchets for sending and receiving eliminate race conditions and collisions when users type simultaneously.
+* **Out-of-Order Message Resilience**: Smart packet-loss cache map natively captures skipped message keys (up to a 100-packet threshold) and destroys them immediately upon late consumption to prevent replay attacks.
+* **Out-of-Band Verification (SAS)**: MitM mitigation via a formatted Short Authentication String derived from a SHA-512 hash of the shared secret.
+* **End-to-End Encryption**: Authenticated encryption using AES-GCM with unique nonces and unique ephemeral keys for every single transmitted message.
+* **Text-Safe Wire Protocol**: Network payloads are encoded into a zero-padded hex sequence header combined with a Base64 ciphertext stream separated by a colon (`:`).
+* **Concurrent I/O**: Asynchronous message reading and writing managed through Go goroutines.
 
 ## Security Model: TOFU & SAS
 
-The application implements a Trust on First Use (TOFU) model for seamless connectivity. To protect users against Man-in-the-Middle (MitM) attacks, the application prints a distinct, chunked Short Authentication String (SAS) derived from the derived shared key. Users can manually compare this code via an independent out-of-band secure channel (e.g., voice call) to verify identity authenticity.
+The application implements a Trust on First Use (TOFU) model for seamless connectivity. To protect users against Man-in-the-Middle (MitM) attacks, the application prints a distinct, chunked Short Authentication String (SAS) derived from the initial shared key. Users can manually compare this code via an independent out-of-band secure channel (e.g., voice call) to verify identity authenticity before trusting the session.
 
 ## Network Port Validation Rule
 
 The application implements a validation loop rejecting any ports out of the safe spectrum:
-- **Valid Range**: 1024 to 65535 (Unprivileged/Private Ports).
-- **Restricted Range**: 1 to 1023 (System/Well-Known Ports requiring root privileges are blocked to minimize runtime socket access errors).
+
+* **Valid Range**: 1024 to 65535 (Unprivileged/Private Ports).
+* **Restricted Range**: 1 to 1023 (System/Well-Known Ports requiring root privileges are blocked to minimize runtime socket access errors).
 
 ## Architecture Workflow
 
 1. **Connection Setup**: One node acts as Host (binding to a user-defined port) and the other connects as Client by inputting the specific target IP and matching port.
-2. **Handshake Phase**: Both nodes generate an ephemeral X25519 key pair, exchange public keys in Base64 via the unified connection scanner, and locally derive the identical 32-byte shared secret.
-3. **Authentication & Session**: The shared secret is hashed using SHA-512 to display the structured SAS code on both terminals. The derived secret is then loaded into an AES-GCM cipher block to encrypt and decrypt all subsequent text messages asynchronously.
+2. **Handshake Phase**: Both nodes generate an ephemeral X25519 key pair, exchange public keys in Base64 via the unified connection scanner, and locally derive an identical 32-byte master secret.
+3. **Authentication Block**: The master secret is hashed using SHA-512 to display the structured SAS code on both terminals for visual out-of-band verification.
+4. **Ratchet Initialization**: The master secret is split using dedicated HKDF domain separation info labels (`privy-host-to-client` and `privy-client-to-host`) into asymmetrical sending and receiving conveyor belts.
+5. **Session Transmission**: Every sent line advances the sending ratchet to generate a one-time key for AES-GCM encryption, tracking the frame on the wire via an explicit hex sequence number header. The receiver evaluates the sequence header to match the happy path, handle packet drops via the map cache, or catch up through a jump-forward loop.
 
 ## Prerequisites
 
-- [Go 1.20 or higher](https://go.dev/doc/install)
+* [Go 1.21 or higher](https://go.dev/doc/install)
+* Golang extended cryptography dependencies
+
+```bash
+go get golang.org/x/crypto/hkdf
+
+```
 
 ## Getting Started
 
@@ -102,11 +114,11 @@ You can now type messages in the terminal and press Enter to stream encrypted da
 
 ## Cryptographic Specifications
 
-* **Key Exchange**: Curve25519 (crypto/ecdh)
-* **Authentication Hashing**: SHA-512 (crypto/sha512)
-* **Symmetric Cipher**: AES-256-GCM (crypto/aes, crypto/cipher)
-* **Payload Encoding**: Standard Base64 (encoding/base64)
+* **Key Exchange**: Curve25519 (`crypto/ecdh`)
+* **Key Derivation Function**: HKDF-SHA512 (`golang.org/x/crypto/hkdf`, `crypto/sha512`)
+* **Authentication Hashing**: SHA-512 (`crypto/sha512`)
+* **Symmetric Cipher**: AES-256-GCM (`crypto/aes`, `crypto/cipher`)
+* **Payload Encoding**: Standard Base64 (`encoding/base64`) & Zero-Padded Hex Headers
 
 ## Demo
 <img width="1920" height="966" alt="demo" src="https://github.com/user-attachments/assets/85fdaec7-85cc-4f58-8527-1a9ed2133ef1" />
-
