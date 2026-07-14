@@ -268,6 +268,9 @@ func PrintRecvdLine(session *types.PrivySession, scanner *bufio.Scanner) {
 		fmt.Printf("Received -> %s\n", string(DecMsg))
 		fmt.Print("Send: ")
 	}
+
+	fmt.Println(errs.CONN_ENDED)
+	os.Exit(0)
 }
 
 func HandleConn(session *types.PrivySession, scanner *bufio.Scanner){

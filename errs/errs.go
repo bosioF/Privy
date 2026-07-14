@@ -12,3 +12,4 @@ const SEQ_NUM_NOT_FOUND_CACHE = "expected seq number is bigger than the received
 const WTF_ERR = "how did we get here"
 const B64_ERR = "\rerrors while trying to decode base64"
 const DEC_ERR = "\rerrors while trying to decrypt"
+const CONN_ENDED = "\nconnection ended :p"
