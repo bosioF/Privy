@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 
 	"privy/types"
+	"privy/errs"
 )
 
 func InitRatchet(sharedKey []byte, isHost bool) (*types.SendingRatchet, *types.ReceivingRatchet, error){
@@ -169,7 +170,7 @@ func Handshake(conn net.Conn, scanner *bufio.Scanner) ([]byte, error){
 	fmt.Fprintln(conn, b64pubBytes)
 
 	if !scanner.Scan() {
-		return nil, errors.New("error while receiving pub key")
+		return nil, errors.New(errs.PUB_KEY_ERR)
 	}
 
 	b64remotePub := scanner.Text()

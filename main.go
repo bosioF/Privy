@@ -3,17 +3,35 @@ package main
 import (
 	"fmt"
 	"bufio"
+	"os"
+	"net"
 
 	"privy/crypto"
-	"privy/net"
+	"privy/netw"
 	"privy/types"
+	"privy/errs"
+	"privy/helpers"
 )
 
-func main(){	
-	conn, isHost, err := net.GetConn()
-	if err != nil {
-		fmt.Println(err)
-		return
+func main(){
+	var conn net.Conn
+	var isHost bool
+	var err error
+
+	argCount := len(os.Args) - 1
+	if argCount == 0 {
+		conn, isHost, err = netw.GetConn()
+		if err != nil {
+			return
+		}		
+	} else if argCount == 3 || argCount == 5 {
+		conn, isHost, err = helpers.ParseArgs(os.Args[1:])
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	} else {
+		fmt.Println(errs.WRONG_ARGS)
 	}
 	
 	scanner := bufio.NewScanner(conn)
@@ -34,8 +52,8 @@ func main(){
 		recvRatchet,
 	}
 
-	go net.HandleConn(session, scanner)
+	go netw.HandleConn(session, scanner)
 	
-	net.SendToConn(session)
+	netw.SendToConn(session)
 }
 

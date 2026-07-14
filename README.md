@@ -66,11 +66,11 @@ Run the application in two different terminal instances on your local machine or
 Run the program and select the host option, then enter a valid port:
 
 ```bash
-go run main.go
+go run main.go # go run main.go -h -p <port>
 
 ```
 
-Prompt flow:
+Prompt flow (if runned without args):
 
 ```text
 You want to host(h) or connect(c)?
@@ -82,14 +82,14 @@ Listening
 
 #### Node B (Client)
 
-Run the program, select the connect option, enter the target port, and provide the Host IP address (or press Enter for localhost):
+Run the program, select the connect option, enter the target port, and provide the Host IP address (or press Enter for localhost), or specify the details as args (specify "-ip" only if you're using one different from localhost):
 
 ```bash
-go run main.go
+go run main.go # go run main.go -c -p 5000 -ip <ip>
 
 ```
 
-Prompt flow:
+Prompt flow (if runned without args):
 
 ```text
 You want to host(h) or connect(c)?
