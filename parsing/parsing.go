@@ -1,4 +1,4 @@
-package helpers
+package parsing
 
 import (
 	"net"
@@ -55,7 +55,7 @@ func ParseArgs(args []string)(net.Conn, bool, error) {
 					portStr := args[2]
 					ip := "::1"
 
-					if len(args) >= 5 && args[3] == "-ip" {
+					if len(args) > 4 && args[3] == "-ip" {
 						ip = args[4]
 						if netw.CheckIp([]byte(ip), false, true) == "" {
 							return nil, false, errors.New(errs.GEN_IP_ERR)
@@ -66,7 +66,7 @@ func ParseArgs(args []string)(net.Conn, bool, error) {
 					
 					var conn net.Conn
 					var err error
-					switch netw.CheckIp([]byte(ip), false, false) {
+					switch netw.CheckIp([]byte(ip), false, true) {
 						case "v4":
 							targetAddr := ip + ":" + portStr
 				

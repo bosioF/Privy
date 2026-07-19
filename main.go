@@ -10,7 +10,8 @@ import (
 	"privy/netw"
 	"privy/types"
 	"privy/errs"
-	"privy/helpers"
+	"privy/parsing"
+	"privy/help"
 )
 
 func main(){
@@ -24,15 +25,19 @@ func main(){
 		if err != nil {
 			fmt.Println(err)
 			return
-		}		
+		}	
+	} else if argCount == 1 {
+		help.Menu()
+		return
 	} else if argCount == 3 || argCount == 5 {
-		conn, isHost, err = helpers.ParseArgs(os.Args[1:])
+		conn, isHost, err = parsing.ParseArgs(os.Args[1:])
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 	} else {
 		fmt.Println(errs.WRONG_ARGS)
+		return
 	}
 	
 	scanner := bufio.NewScanner(conn)

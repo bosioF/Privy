@@ -56,6 +56,7 @@ Clone the repository and navigate into the project directory:
 ```bash
 git clone [https://github.com/bosioF/Privy.git](https://github.com/bosioF/Privy.git)
 cd Privy
+go build . # to build the binary "privy"
 
 ```
 
@@ -63,12 +64,27 @@ cd Privy
 
 Run the application in two different terminal instances on your local machine or two machines connected to the same network.
 
+#### Help Menu
+
+```bash
+./privy --help
+
+```
+
+```text
+Print this menu: ./privy --help
+
+Host on PORT: ./privy -h -p <PORT>
+Connect to PORT on localhost: ./privy -c -p <PORT>
+Connect to PORT on IPv4 or IPv6: ./privy -c -p <PORT> -ip <IP>
+```
+
 #### Node A (Host)
 
 Run the program and select the host option, then enter a valid port:
 
 ```bash
-go run main.go # Or use flags: go run main.go -h -p <port>
+./privy # Or use flags: ./privy -h -p <port>
 
 ```
 
@@ -87,7 +103,7 @@ Listening
 Run the program, select the connect option, enter the target port, and provide the Host IP address. Press Enter to use the **default IPv6 localhost (`::1`)**, or specify the details as CLI args:
 
 ```bash
-go run main.go # Or use flags: go run main.go -c -p 5000 -ip <ip>
+./privy # Or use flags: ./privy -c -p 5000 -ip <ip>
 
 ```
 
