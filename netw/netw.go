@@ -41,7 +41,7 @@ func ConnAccept(listener net.Listener) (net.Conn, error){
 
 func CheckPort(port int, flag bool) bool {
 	if port < 1024 || port > 65535 {
-		if !flag {
+		if flag {
 			return false
 		}
 
