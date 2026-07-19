@@ -5,7 +5,9 @@ A minimalist, peer-to-peer (P2P) encrypted chat application written in Go. It es
 ## Features
 
 * **P2P Architecture**: Direct communication between Host and Client over TCP across local networks or localhost.
-* **Dynamic Connection Inputs**: Flexible configuration prompting the client for target Host IP addresses and custom ports.
+* **Dual-Stack Network Support**: Native support for both **IPv4** and **IPv6** addresses. 
+* **IPv6 by Default**: The application defaults to IPv6 (`::1`) for local connections if no specific IP address is provided by the user.
+* **Dynamic Connection Inputs**: Flexible configuration prompting the client for target Host IP addresses (IPv4/IPv6) and custom ports.
 * **Input Validation**: Automatic bounds checking ensuring port values fall strictly within the safe unprivileged range (1024-65535).
 * **Dynamic Key Exchange**: X25519 Elliptic-Curve Diffie-Hellman (ECDH) handshake creates a unique master secret per session.
 * **Perfect Forward Secrecy (PFS)**: A stateful, unidirectional symmetric key ratchet powered by HKDF-SHA512 ensures that compromising a current message key exposes zero clues about past or future keys.
@@ -20,16 +22,16 @@ A minimalist, peer-to-peer (P2P) encrypted chat application written in Go. It es
 
 The application implements a Trust on First Use (TOFU) model for seamless connectivity. To protect users against Man-in-the-Middle (MitM) attacks, the application prints a distinct, chunked Short Authentication String (SAS) derived from the initial shared key. Users can manually compare this code via an independent out-of-band secure channel (e.g., voice call) to verify identity authenticity before trusting the session.
 
-## Network Port Validation Rule
+## Network & Port Validation Rules
 
-The application implements a validation loop rejecting any ports out of the safe spectrum:
-
-* **Valid Range**: 1024 to 65535 (Unprivileged/Private Ports).
-* **Restricted Range**: 1 to 1023 (System/Well-Known Ports requiring root privileges are blocked to minimize runtime socket access errors).
+* **IP Protocol Selection**: The network engine parses the provided IP address to automatically determine the protocol. If an IPv6 address is detected, it encapsulates the literal address in brackets (e.g., `[::1]:port`) to comply with standard Go network dialing formats.
+* **Default Fallback**: Pressing Enter at the IP prompt automatically defaults the connection to the IPv6 loopback address (`::1`).
+* **Valid Port Range**: 1024 to 65535 (Unprivileged/Private Ports).
+* **Restricted Port Range**: 1 to 1023 (System/Well-Known Ports requiring root privileges are blocked to minimize runtime socket access errors).
 
 ## Architecture Workflow
 
-1. **Connection Setup**: One node acts as Host (binding to a user-defined port) and the other connects as Client by inputting the specific target IP and matching port.
+1. **Connection Setup**: One node acts as Host (binding to a user-defined port) and the other connects as Client by inputting the specific target IP (IPv4/IPv6) and matching port. If no IP is specified, the client defaults to IPv6 (`::1`).
 2. **Handshake Phase**: Both nodes generate an ephemeral X25519 key pair, exchange public keys in Base64 via the unified connection scanner, and locally derive an identical 32-byte master secret.
 3. **Authentication Block**: The master secret is hashed using SHA-512 to display the structured SAS code on both terminals for visual out-of-band verification.
 4. **Ratchet Initialization**: The master secret is split using dedicated HKDF domain separation info labels (`privy-host-to-client` and `privy-client-to-host`) into asymmetrical sending and receiving conveyor belts.
@@ -52,7 +54,7 @@ go get golang.org/x/crypto/hkdf
 Clone the repository and navigate into the project directory:
 
 ```bash
-git clone https://github.com/bosioF/Privy.git
+git clone [https://github.com/bosioF/Privy.git](https://github.com/bosioF/Privy.git)
 cd Privy
 
 ```
@@ -66,11 +68,11 @@ Run the application in two different terminal instances on your local machine or
 Run the program and select the host option, then enter a valid port:
 
 ```bash
-go run main.go # go run main.go -h -p <port>
+go run main.go # Or use flags: go run main.go -h -p <port>
 
 ```
 
-Prompt flow (if runned without args):
+Prompt flow (if run without args):
 
 ```text
 You want to host(h) or connect(c)?
@@ -82,28 +84,28 @@ Listening
 
 #### Node B (Client)
 
-Run the program, select the connect option, enter the target port, and provide the Host IP address (or press Enter for localhost), or specify the details as args (specify "-ip" only if you're using one different from localhost):
+Run the program, select the connect option, enter the target port, and provide the Host IP address. Press Enter to use the **default IPv6 localhost (`::1`)**, or specify the details as CLI args:
 
 ```bash
-go run main.go # go run main.go -c -p 5000 -ip <ip>
+go run main.go # Or use flags: go run main.go -c -p 5000 -ip <ip>
 
 ```
 
-Prompt flow (if runned without args):
+Prompt flow showing the **IPv6 default behavior** (pressing Enter for localhost):
 
 ```text
 You want to host(h) or connect(c)?
 c
 On what port do you want to connect? (1024-65535) 5000
 What is the IP? (Press Enter for localhost): 
-Connecting to 127.0.0.1:5000...
+Connecting to [::1]:5000 ...
 
 ```
 
 Once the handshake is computed, the verification prompt will display on both terminals:
 
 ```text
-Connection successful! 127.0.0.1:5000
+Connection successful! [::1]:5000
 Handshake successful! Connection Secure!
 If you suspect someone is attempting a MitM attack, verify that this code is the same as the other person, over another secure channel.
 SAS Code:  a1b2-c3d4-e5f6-7g8h-a1b2-c3d4-e5f6-7g8h 
@@ -121,4 +123,4 @@ You can now type messages in the terminal and press Enter to stream encrypted da
 * **Payload Encoding**: Standard Base64 (`encoding/base64`) & Zero-Padded Hex Headers
 
 ## Demo
-<img width="1920" height="966" alt="demo" src="https://github.com/user-attachments/assets/85fdaec7-85cc-4f58-8527-1a9ed2133ef1" />
+<img width="1920" height="954" alt="demo_image" src="https://github.com/user-attachments/assets/46295f75-a7b2-4f76-94f3-8a28c62793c8" />

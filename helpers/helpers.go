@@ -53,22 +53,40 @@ func ParseArgs(args []string)(net.Conn, bool, error) {
 
 				if netw.CheckPort(port, false) {
 					portStr := args[2]
-					ip := "127.0.0.1"
+					ip := "::1"
 
 					if len(args) >= 5 && args[3] == "-ip" {
 						ip = args[4]
-						if !netw.CheckIp([]byte(ip), false, true) {
-							return nil, false, errors.New(errs.IPV4_ERR)
+						if netw.CheckIp([]byte(ip), false, true) == "" {
+							return nil, false, errors.New(errs.GEN_IP_ERR)
 						}
 					} else if len(args) != 3 {
 						return nil, false, errors.New(errs.WRONG_ARGS)
 					}
+					
+					var conn net.Conn
+					var err error
+					switch netw.CheckIp([]byte(ip), false, false) {
+						case "v4":
+							targetAddr := ip + ":" + portStr
 				
-					targetAddr := ip + ":" + portStr
-					fmt.Println("Connecting to", targetAddr, "...")
-					conn, err := net.Dial("tcp", targetAddr)
-					if err != nil {
-						return nil, false, errors.New(errs.DIAL_ERR)
+							fmt.Println("Connecting to", targetAddr, "...")
+							conn, err = net.Dial("tcp", targetAddr)
+							if err != nil {
+								return nil, false, errors.New(errs.DIAL_ERR)
+							}
+
+						case "v6":
+							targetAddr := "[" + ip + "]" + ":" + portStr
+
+							fmt.Println("Connecting to", targetAddr, "...")
+							conn, err = net.Dial("tcp6", targetAddr)
+							if err != nil {
+								return nil, false, errors.New(errs.DIAL_ERR)
+							}
+
+						default:
+							return nil, false, errors.New(errs.GEN_IP_ERR)
 					}
 
 					return conn, false, nil

@@ -52,18 +52,29 @@ func CheckPort(port int, flag bool) bool {
 	return true
 }
 
-func CheckIp(ip []byte, flag bool, arg bool) bool {
-	reg := `^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
-	ok, err := regexp.Match(reg, ip)
+func CheckIp(ip []byte, flag bool, arg bool) string {
+	IPv4reg := `^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+	IPv6reg := `^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$`
+	
+	IPv4, err := regexp.Match(IPv4reg, ip)
 	if err != nil {
-		return false
+		return ""
 	}
 
-	if !ok && !flag && !arg {
-		fmt.Println(errs.IPV4_ERR)
+	IPv6, err := regexp.Match(IPv6reg, ip)
+	if err != nil {
+		return ""
+	}
+	
+	if IPv4 {
+		return "v4"
+	} else if IPv6 {
+		return "v6"
+	} else if !flag && !arg {
+		fmt.Println(errs.GEN_IP_ERR)
 	}
 
-	return ok
+	return ""
 }
 
 func Listen() (net.Conn, error){
@@ -113,7 +124,7 @@ func Connect() (net.Conn, error){
 	ip := "0.0.0.0.0"
 	flag = true
 
-	for !CheckIp([]byte(ip), flag, false) {
+	for CheckIp([]byte(ip), flag, false) == "" {
 		flag = false
 		fmt.Print("What is the IP? (Press Enter for localhost): ")
 		ipInput, err := reader.ReadString('\n')
@@ -123,18 +134,35 @@ func Connect() (net.Conn, error){
 
 		ip = strings.TrimSpace(ipInput)
 		if ip == "" {
-			ip = "127.0.0.1"
+			ip = "::1"
 		}
 	}
 
-	targetAddr := ip + ":" + strconv.Itoa(port)
+	var conn net.Conn
+	var err error
+	switch CheckIp([]byte(ip), flag, false) {
+		case "v4":
+			targetAddr := ip + ":" + strconv.Itoa(port)
+			
+			fmt.Println("Connecting to", targetAddr, "...")
+			conn, err = net.Dial("tcp", targetAddr)
+			if err != nil {
+				return nil, errors.New(errs.DIAL_ERR)
+			}
 
-	fmt.Println("Connecting to", targetAddr, "...")
-	conn, err := net.Dial("tcp", targetAddr)
-	if err != nil {
-		return nil, errors.New(errs.DIAL_ERR)
+		case "v6":
+			targetAddr := "[" + ip + "]" + ":" + strconv.Itoa(port)
+
+			fmt.Println("Connecting to", targetAddr, "...")
+			conn, err = net.Dial("tcp6", targetAddr)
+			if err != nil {
+				return nil, errors.New(errs.DIAL_ERR)
+			}
+
+		default:
+			return nil, errors.New(errs.GEN_IP_ERR)
 	}
-
+	
 	return conn, nil
 }
 
