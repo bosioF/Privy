@@ -23,7 +23,7 @@ func ParseArgs(args []string)(net.Conn, bool, error) {
 					return nil, false, errors.New(errs.CONV_ERR)
 				}
 
-				if netw.CheckPort(port, 0) == 1 {
+				if netw.CheckPort(port, false) {
 					listener, err := netw.ConnInit(port)
 					if err != nil {
 						return nil, false, err
@@ -51,12 +51,15 @@ func ParseArgs(args []string)(net.Conn, bool, error) {
 					return nil, false, errors.New(errs.CONV_ERR)
 				}
 
-				if netw.CheckPort(port, 0) == 1 {
+				if netw.CheckPort(port, false) {
 					portStr := args[2]
 					ip := "127.0.0.1"
 
 					if len(args) >= 5 && args[3] == "-ip" {
 						ip = args[4]
+						if !netw.CheckIp([]byte(ip), false, true) {
+							return nil, false, errors.New(errs.IPV4_ERR)
+						}
 					} else if len(args) != 3 {
 						return nil, false, errors.New(errs.WRONG_ARGS)
 					}

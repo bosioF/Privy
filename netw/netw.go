@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"os"
 	"net"
+	"regexp"
 
 	"encoding/base64"
 
@@ -38,29 +39,43 @@ func ConnAccept(listener net.Listener) (net.Conn, error){
 		return conn, nil
 }
 
-func CheckPort(port int, flag int)(int){
+func CheckPort(port int, flag bool) bool {
 	if port < 1024 || port > 65535 {
-		if flag == 1 {
-			return 0
+		if !flag {
+			return false
 		}
 
-		fmt.Println("Port not valid")
-		return 0
+		fmt.Println(errs.INVALID_PORT)
+		return false
 	}
 
-	return 1
+	return true
+}
+
+func CheckIp(ip []byte, flag bool, arg bool) bool {
+	reg := `^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$`
+	ok, err := regexp.Match(reg, ip)
+	if err != nil {
+		return false
+	}
+
+	if !ok && !flag && !arg {
+		fmt.Println(errs.IPV4_ERR)
+	}
+
+	return ok
 }
 
 func Listen() (net.Conn, error){
 	var port int = 0
-	var flag int = 1
+	var flag bool = true
 	
-	for CheckPort(port, flag) == 0 {
-		flag = 0
+	for !CheckPort(port, flag) {
+		flag = false
 		fmt.Print("On what port do you want to listen? (1024-65535) ")
 		_, err := fmt.Scanf("%d", &port)
 		if err != nil {
-			return nil, err
+			return nil, errors.New(errs.READ_ERR)
 		}
 	}
 	
@@ -83,10 +98,10 @@ func Connect() (net.Conn, error){
 	reader := bufio.NewReader(os.Stdin)
 	
 	var port int = 0
-	var flag int = 1
+	var flag bool = true
 
-	for CheckPort(port, flag) == 0 {
-		flag = 0
+	for !CheckPort(port, flag) {
+		flag = false
 		fmt.Print("On what port do you want to connect? (1024-65535) ")
 		portInput, err := reader.ReadString('\n')
 		if err != nil {
@@ -94,17 +109,22 @@ func Connect() (net.Conn, error){
 		}
 		port, _ = strconv.Atoi(strings.TrimSpace(portInput))
 	}
+	
+	ip := "0.0.0.0.0"
+	flag = true
 
-	fmt.Print("What is the IP? (Press Enter for localhost): ")
-	ipInput, err := reader.ReadString('\n')
-	if err != nil {
-		return nil, err
-	}
+	for !CheckIp([]byte(ip), flag, false) {
+		flag = false
+		fmt.Print("What is the IP? (Press Enter for localhost): ")
+		ipInput, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, err
+		}
 
-	ip := strings.TrimSpace(ipInput)
-
-	if ip == "" {
-		ip = "127.0.0.1"
+		ip = strings.TrimSpace(ipInput)
+		if ip == "" {
+			ip = "127.0.0.1"
+		}
 	}
 
 	targetAddr := ip + ":" + strconv.Itoa(port)
@@ -112,7 +132,7 @@ func Connect() (net.Conn, error){
 	fmt.Println("Connecting to", targetAddr, "...")
 	conn, err := net.Dial("tcp", targetAddr)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(errs.DIAL_ERR)
 	}
 
 	return conn, nil
@@ -123,7 +143,7 @@ func GetConn() (net.Conn, bool, error){
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return nil, false, err 
+		return nil, false, errors.New(errs.READ_ERR)
 	}
 
 	switch strings.TrimSpace(input){

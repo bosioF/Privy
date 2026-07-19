@@ -22,6 +22,7 @@ func main(){
 	if argCount == 0 {
 		conn, isHost, err = netw.GetConn()
 		if err != nil {
+			fmt.Println(err)
 			return
 		}		
 	} else if argCount == 3 || argCount == 5 {
